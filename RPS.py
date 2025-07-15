@@ -1,12 +1,6 @@
-import random 
-
-key={1: "rock", 2: "paper", 3: "scissors"}
-robot = random.randint(1,3)
-play = (int(input("rock(1), paper(2), scissors(3) Shoot! >:")))
-rps = play - robot
-print("robot chose\n" + key[robot])
-if rps > 0 and rps != -2: print("you win")
-elif rps == -2: print("you win")
-elif rps == -1: print("you lose")
-elif rps == 0: print("tie")
-else: print("pick one of the numbers")
+import random; player = int(input('Rock(1), Paper(2), or Scissors(3) - Choose One: '))
+computer = random.randint(1, 3)
+print("Computer Chose", ["Rock", "Paper", "Scissors"][computer - 1])
+if player == computer: print("Tie")
+elif (player - computer) % 3 == 1: print("Player Wins!")
+else: print("Robot Wins!")
