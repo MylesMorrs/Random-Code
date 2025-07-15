@@ -1,2 +1,2 @@
 # Random-Code
-random stuff I make 
+Random Fun Pieces of Code
