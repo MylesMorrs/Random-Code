@@ -1,59 +1,70 @@
+import tkinter as tk
 import socket
 import threading
-import tkinter as tk
-from tkinter import messagebox, simpledialog
 
-class RPSClient:
+SERVER_IP = '127.0.0.1'  # Replace with server's IP
+PORT = 9999
+
+class RPSGameClient:
     def __init__(self, master):
         self.master = master
-        master.title("Rock Paper Scissors")
+        master.title("RPS Client")
+        self.choices = ["Rock", "Paper", "Scissors"]
+        self.choice = None
+        self.opponent_choice = None
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        threading.Thread(target=self.connect_server, daemon=True).start()
 
-        self.label = tk.Label(master, text="Waiting for server message...", width=40)
+        self.label = tk.Label(master, text="Connecting to server...")
         self.label.pack(pady=10)
 
-        self.rock_button = tk.Button(master, text="Rock", width=12, command=lambda: self.send_move("rock"))
-        self.paper_button = tk.Button(master, text="Paper", width=12, command=lambda: self.send_move("paper"))
-        self.scissors_button = tk.Button(master, text="Scissors", width=12, command=lambda: self.send_move("scissors"))
+        self.buttons = []
+        for c in self.choices:
+            btn = tk.Button(master, text=c, command=lambda choice=c: self.send_choice(choice), state=tk.DISABLED)
+            btn.pack()
+            self.buttons.append(btn)
 
-        self.rock_button.pack(pady=2)
-        self.paper_button.pack(pady=2)
-        self.scissors_button.pack(pady=2)
+        self.result_label = tk.Label(master, text="")
+        self.result_label.pack(pady=20)
 
-        self.sock = None
-        self.input_thread = threading.Thread(target=self.receive_messages, daemon=True)
-        self.connect_to_server()
+    def connect_server(self):
+        self.s.connect((SERVER_IP, PORT))
+        self.label.config(text="Connected to server! Choose your move:")
+        for btn in self.buttons:
+            btn.config(state=tk.NORMAL)
+        threading.Thread(target=self.receive_choice, daemon=True).start()
 
-    def connect_to_server(self):
-        server_ip = simpledialog.askstring("Server IP", "Enter server IP address:", parent=self.master)
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            self.sock.connect((server_ip, 12345))
-            self.input_thread.start()
-        except Exception as e:
-            messagebox.showerror("Connection Error", f"Could not connect: {e}")
-            self.master.destroy()
+    def send_choice(self, choice):
+        self.choice = choice
+        self.s.sendall(choice.encode())
+        self.label.config(text=f"You chose: {choice}. Waiting for opponent...")
+        for btn in self.buttons:
+            btn.config(state=tk.DISABLED)
 
-    def send_move(self, move):
-        try:
-            self.sock.send(move.encode())
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to send move: {e}")
-            self.master.destroy()
-
-    def receive_messages(self):
+    def receive_choice(self):
         while True:
-            try:
-                msg = self.sock.recv(1024).decode()
-                self.update_label(msg)
-            except Exception:
+            data = self.s.recv(1024)
+            if not data:
                 break
+            self.opponent_choice = data.decode()
+            self.show_result()
 
-    def update_label(self, text):
-        def update():
-            self.label.config(text=text)
-        self.master.after(0, update)
+    def show_result(self):
+        result = self.get_winner(self.opponent_choice, self.choice)
+        self.result_label.config(text=f"Opponent chose: {self.opponent_choice}\n{result}")
+        for btn in self.buttons:
+            btn.config(state=tk.NORMAL)
+        self.label.config(text="Choose your move:")
+
+    def get_winner(self, p1, p2):
+        if p1 == p2:
+            return "It's a Tie!"
+        elif (p1 == "Rock" and p2 == "Scissors") or (p1 == "Paper" and p2 == "Rock") or (p1 == "Scissors" and p2 == "Paper"):
+            return "You Win!"
+        else:
+            return "You Lose!"
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = RPSClient(root)
+    app = RPSGameClient(root)
     root.mainloop()
